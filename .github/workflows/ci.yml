@@ -12,18 +12,25 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:17
         env:
-          POSTGRES_DB: courses
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: courses_variant18_test
+          POSTGRES_USER: courses_student
+          POSTGRES_PASSWORD: ci_password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U courses_student -d courses_variant18_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: courses_variant18_test
+      DB_USER: courses_student
+      DB_PASSWORD: ci_password
 
     steps:
       - name: Checkout code
@@ -39,27 +46,15 @@ jobs:
       - name: Build project
         run: mvn compile
 
-      - name: Initialize Database Schema
+      - name: Apply database migrations
         run: |
           for file in migrations/*.sql; do
             echo "Executing migration: $file"
-            PGPASSWORD=postgres psql -h localhost -U postgres -d courses -f "$file"
+            PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -v ON_ERROR_STOP=1 -f "$file"
           done
 
-      - name: Run Unit and API Tests
+      - name: Run tests
         run: mvn test
-        env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_DB: courses
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          DB_URL: jdbc:postgresql://localhost:5432/courses
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/courses
-          SPRING_DATASOURCE_USERNAME: postgres
-          SPRING_DATASOURCE_PASSWORD: postgres
 
       - name: Upload Test Report Artifact
         if: always()
