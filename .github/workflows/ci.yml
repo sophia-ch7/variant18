@@ -39,6 +39,12 @@ jobs:
       - name: Build project
         run: mvn compile
 
+      - name: Initialize Database Schema
+        run: |
+          for file in migrations/*.sql; do
+            PGPASSWORD=postgres psql -h localhost -U postgres -d courses -f "$file"
+          done
+
       - name: Run Unit and API Tests
         run: mvn test
         env:
